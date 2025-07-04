@@ -1,0 +1,89 @@
+networks:
+  skillify-dev:
+    driver: bridge
+    name: skillify-dev-network
+
+services:
+
+  webserver:
+    build:
+      context: "docker/webserver"
+    container_name: "${COMPOSE_PROJECT_NAME}"
+    restart: "no"
+    ports:
+      - "${HOST_MACHINE_WEB_PORT}:80"
+    links:
+      - database
+      - mailer
+    volumes:
+      - .:/var/www/html
+      - ./docker/webserver/conf.d/php/php.ini:/usr/local/etc/php/php.ini
+      - ./docker/webserver/xdebug.sh:/usr/local/bin/xdebug.sh
+    environment:
+      PMA_PORT: ${HOST_MACHINE_PMA_PORT}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      HOST_MACHINE_MYSQL_PORT: ${HOST_MACHINE_MYSQL_PORT}
+      XDEBUG_CONFIG: "client_host=host.docker.internal remote_port=${XDEBUG_PORT}"
+      PHP_OPCACHE_MAX_WASTED_PERCENTAGE: ${PHP_OPCACHE_MAX_WASTED_PERCENTAGE}
+      PHP_OPCACHE_MEMORY_CONSUMPTION: ${PHP_OPCACHE_MEMORY_CONSUMPTION}
+      PHP_OPCACHE_VALIDATE_TIMESTAMPS: ${PHP_OPCACHE_VALIDATE_TIMESTAMPS}
+      PHP_OPCACHE_MAX_ACCELERATED_FILES: ${PHP_OPCACHE_MAX_ACCELERATED_FILES}
+      PHP_IDE_CONFIG: "serverName=localhost"
+      COMPOSER_AUTH: ${COMPOSER_AUTH}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  database:
+    build:
+      context: "docker/database"
+    container_name: "${COMPOSE_PROJECT_NAME}-mysql"
+    restart: "no"
+    ports:
+      - "${HOST_MACHINE_MYSQL_PORT}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - persistent-database:/var/lib/mysql
+
+  phpmyadmin:
+    build:
+      context: "docker/phpmyadmin"
+    container_name: "${COMPOSE_PROJECT_NAME}-phpmyadmin"
+    links:
+      - database
+    environment:
+      PMA_HOST: database
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      UPLOAD_LIMIT: ${UPLOAD_LIMIT}
+      MEMORY_LIMIT: ${MEMORY_LIMIT}
+    ports:
+      - "${HOST_MACHINE_PMA_PORT}:80"
+    volumes:
+      - /sessions
+      - ./docker/webserver/conf.d/php/php.ini:/usr/local/etc/php/conf.d/php-phpmyadmin.ini
+
+  mailer:
+    build:
+      context: "docker/mailer"
+    container_name: "${COMPOSE_PROJECT_NAME}-mailer"
+    ports:
+      - "1025"
+      - "8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+# ensemble des volumes persistants
+volumes:
+  persistent-database:
