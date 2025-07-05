@@ -109,7 +109,7 @@ vendor: composer
 check-db-container: ## Check db container is up
 	$(call wait,MySQL,1,$(DOCKER_COMP_EXEC) database mysql -u $(MYSQL_USER) --password=$(MYSQL_PASSWORD) -e "SHOW DATABASES;" --silent | grep "information_schema")
 
-db-init: db-clear-meta ## db-migrate db-fixtures ## install database schema and run doctrine fixtures
+db-init: db-clear-meta db-migrate db-fixtures ## db-migrate db-fixtures ## install database schema and run doctrine fixtures
 
 db-reset: db-clear-meta db-migrate ## check database schema
 
